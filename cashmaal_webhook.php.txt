@@ -1,0 +1,57 @@
+<?php
+// 🛠️ DATABASE CONNECTION SETTINGS
+$host = "localhost"; 
+$db_user = "root";   
+$db_pass = "";       
+$db_name = "quick_run_db"; 
+
+$conn = new mysqli($host, $db_user, $db_pass, $db_name);
+
+if ($conn->connect_error) {
+    die("Connection Failed: " . $conn->connect_error);
+}
+
+// 🔐 CASHMAAL IPN SECRET KEY
+// Apne CashMaal account se "Merchant Settings" mein ja kar apni IPN Secret Key yahan dalein
+$cashmaal_ipn_secret = "YOUR_CASHMAAL_IPN_SECRET_KEY"; 
+
+// CashMaal se aane wala data pakarna
+if (isset($_POST['status']) && isset($_POST['order_id'])) {
+    
+    $status = $_POST['status'];
+    $player_id = mysqli_real_escape_string($conn, $_POST['order_id']); // Hamari game mein order_id hi player_id hai
+    $amount = floatval($_POST['amount']);
+    
+    // Security Check: Verification signature match karna
+    if (isset($_POST['ipn_key']) && $_POST['ipn_key'] == $cashmaal_ipn_secret) {
+        
+        // Agar payment bilkul Kamyab (Success) ho gayi hai
+        if ($status == 'success' || $status == 'completed') {
+            
+            // Player ke purane coins check karna
+            $check_query = "SELECT coins FROM users WHERE player_id = '$player_id'";
+            $result = $conn->query($check_query);
+            
+            if ($result->num_rows > 0) {
+                // Purane coins mein naye paise plus (add) karna
+                $update_query = "UPDATE users SET coins = coins + $amount WHERE player_id = '$player_id'";
+                $conn->query($update_query);
+            } else {
+                // Agar player database mein nahi hai toh naya bana kar amount dalna
+                $insert_query = "INSERT INTO users (player_id, coins) VALUES ('$player_id', $amount)";
+                $conn->query($insert_query);
+            }
+            
+            echo "Payment Processed Successfully";
+        } else {
+            echo "Payment Status: " . $status;
+        }
+    } else {
+        echo "Security Error: Invalid IPN Key";
+    }
+} else {
+    echo "No Data Received From CashMaal";
+}
+
+$conn->close();
+?>
