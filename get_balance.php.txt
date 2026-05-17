@@ -1,0 +1,42 @@
+<?php
+// 🛠️ DATABASE CONNECTION SETTINGS
+// Render par jab aap database banayenge, toh yeh details wahan se badalni parengi
+$host = "localhost"; 
+$db_user = "root";   
+$db_pass = "";       
+$db_name = "quick_run_db"; 
+
+$conn = new mysqli($host, $db_user, $db_pass, $db_name);
+
+if ($conn->connect_error) {
+    die("Connection Failed: " . $conn->connect_error);
+}
+
+// Unity se Player ID check karna
+if (isset($_GET['player_id'])) {
+    $player_id = mysqli_real_escape_string($conn, $_GET['player_id']);
+    
+    // Player ka balance nikalne ki query
+    // (Check kar lein ke aapki table ka naam 'users' aur columns 'player_id' aur 'coins' hain)
+    $query = "SELECT coins FROM users WHERE player_id = '$player_id'";
+    $result = $conn->query($query);
+    
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        // Sirf balance ka number print hoga taake Unity isay asani se parh sake
+        echo $row['coins']; 
+    } else {
+        // Agar naya player hai toh default 5000 coins de kar insert kar do
+        $insert_query = "INSERT INTO users (player_id, coins) VALUES ('$player_id', 5000)";
+        if ($conn->query($insert_query) === TRUE) {
+            echo "5000";
+        } else {
+            echo "0";
+        }
+    }
+} else {
+    echo "Missing player_id";
+}
+
+$conn->close();
+?>
